@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole { PASSENGER DRIVER ADMIN }
+enum RideStatus { REQUESTED MATCHED ACCEPTED ARRIVING IN_PROGRESS COMPLETED CANCELLED }
+enum PaymentStatus { PENDING INITIATED PAID FAILED REFUNDED }
+enum VehicleType { ECONOMY COMFORT XL MOTORBIKE }
+
+model User {
+  id           String   @id @default(cuid())
+  fullName     String
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String
+  role         UserRole @default(PASSENGER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  driver       Driver?
+  passengerRides Ride[] @relation("PassengerRides")
+  driverRides    Ride[] @relation("DriverRides")
+}
+
+model Driver {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleMake    String
+  vehicleModel   String
+  vehicleColor   String
+  registration   String   @unique
+  vehicleType    VehicleType @default(ECONOMY)
+  verified       Boolean  @default(false)
+  available      Boolean  @default(false)
+  latitude       Float?
+  longitude      Float?
+  rating         Float    @default(5)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Ride {
+  id              String @id @default(cuid())
+  passengerId     String
+  passenger       User @relation("PassengerRides", fields: [passengerId], references: [id])
+  driverId        String?
+  driver          User? @relation("DriverRides", fields: [driverId], references: [id])
+  pickupAddress   String
+  destinationAddress String
+  pickupLat       Float
+  pickupLng       Float
+  destinationLat  Float
+  destinationLng  Float
+  distanceKm      Float
+  estimatedMinutes Int
+  vehicleType     VehicleType @default(ECONOMY)
+  fareKes         Int
+  status          RideStatus @default(REQUESTED)
+  paymentStatus   PaymentStatus @default(PENDING)
+  passengerNote   String?
+  requestedAt     DateTime @default(now())
+  acceptedAt      DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  payment         Payment?
+  @@index([passengerId, createdAt])
+  @@index([driverId, status])
+  @@index([status, createdAt])
+}
+
+model Payment {
+  id              String @id @default(cuid())
+  rideId          String @unique
+  ride            Ride @relation(fields: [rideId], references: [id])
+  amountKes       Int
+  method          String
+  status          PaymentStatus @default(PENDING)
+  providerRef     String? @unique
+  checkoutRequestId String? @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AuditEvent {
+  id          String @id @default(cuid())
+  actorId     String?
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  @@index([actorId, createdAt])
+}
