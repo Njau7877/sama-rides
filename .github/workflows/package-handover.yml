@@ -1,0 +1,25 @@
+name: Build Sama Rides handover ZIP
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package complete repository
+        run: |
+          zip -r sama-rides-handover.zip . \
+            -x ".git/*" "node_modules/*" ".next/*" \
+               ".env" ".env.local" ".env.production" \
+               "sama-rides-handover.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sama-rides-handover
+          path: sama-rides-handover.zip
+          if-no-files-found: error
+          retention-days: 7
